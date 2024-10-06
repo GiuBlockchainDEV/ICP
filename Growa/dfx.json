@@ -1,0 +1,14 @@
+{
+  "canisters": {
+    "IoT": {
+      "main": "growa/demo/main.mo",
+      "type": "motoko"
+    }
+  },
+  "defaults": {
+    "build": {
+      "args": "--hide-warnings",
+      "packtool": "mops sources"
+    }
+  }
+}
