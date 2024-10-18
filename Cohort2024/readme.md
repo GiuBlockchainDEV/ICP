@@ -12,7 +12,7 @@
 
 ## System Flowchart
 
-![ICP Blockchain Data Management System Flowchart](https://www.mermaidchart.com/raw/0b664e47-9f45-4d12-9169-9171c3380fdd?theme=light&version=v0.1&format=svg)
+<img src="https://www.mermaidchart.com/raw/0b664e47-9f45-4d12-9169-9171c3380fdd?theme=light&version=v0.1&format=svg" alt="ICP Blockchain Data Management System Flowchart" width="100%" />
 
 The above flowchart provides a visual representation of the ICP Blockchain Data Management System architecture and data flow. It illustrates the key components, their interactions, and the overall structure of the system.
 
