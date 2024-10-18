@@ -1,4 +1,4 @@
-# ICP Blockchain Data Management System
+# Growa ICP Blockchain Data Management System
 
 ## Table of Contents
 1. [System Overview](#1-system-overview)
@@ -18,7 +18,7 @@ The above flowchart provides a visual representation of the ICP Blockchain Data 
 
 ## 1. System Overview
 
-The ICP Blockchain Data Management System is a decentralized solution for managing, processing, and storing data from various sources, including human users and IoT devices. Built on the Internet Computer Protocol (ICP), it leverages blockchain technology to ensure security, scalability, and decentralization.
+The Growa ICP Blockchain Data Management System is a decentralized solution for managing, processing, and storing data from various sources, including human users and IoT devices. Built on the Internet Computer Protocol (ICP), it leverages blockchain technology to ensure security, scalability, and decentralization.
 
 ### Key Components:
 1. **Management Canister**: Acts as the system's control center, handling authentication, authorization, and request routing.
