@@ -10,6 +10,12 @@
 7. [Advanced Features](#7-advanced-features)
 8. [Future Enhancements](#8-future-enhancements)
 
+## System Flowchart
+
+![ICP Blockchain Data Management System Flowchart](https://www.mermaidchart.com/raw/0b664e47-9f45-4d12-9169-9171c3380fdd?theme=light&version=v0.1&format=svg)
+
+The above flowchart provides a visual representation of the ICP Blockchain Data Management System architecture and data flow. It illustrates the key components, their interactions, and the overall structure of the system.
+
 ## 1. System Overview
 
 The ICP Blockchain Data Management System is a decentralized solution for managing, processing, and storing data from various sources, including human users and IoT devices. Built on the Internet Computer Protocol (ICP), it leverages blockchain technology to ensure security, scalability, and decentralization.
