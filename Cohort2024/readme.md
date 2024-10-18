@@ -12,7 +12,7 @@
 
 ## System Flowchart
 
-<img src='https://www.mermaidchart.com/raw/0b664e47-9f45-4d12-9169-9171c3380fdd?theme=light&version=v0.1&format=svg' alt="ICP Blockchain Data Management System Flowchart" width="100%" />
+![ICP Blockchain Data Management System Flowchart](https://www.mermaidchart.com/raw/0b664e47-9f45-4d12-9169-9171c3380fdd?theme=light&version=v0.1&format=svg)
 
 The above flowchart provides a visual representation of the ICP Blockchain Data Management System architecture and data flow. It illustrates the key components, their interactions, and the overall structure of the system.
 
@@ -431,9 +431,9 @@ To ensure the system can handle increasing loads:
 
 4. **Asynchronous Processing**: Use asynchronous operations for non-critical tasks to improve responsiveness.
 
-## 7. Advanced Features (Continued)
+## 7. Advanced Features 
 
-### 7.1 Complex Querying (Expanded)
+### 7.1 Complex Querying 
 
 ```motoko
 type Query = {
