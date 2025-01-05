@@ -1,0 +1,23 @@
+// device.did
+type Device = record {
+    hash: text;
+    owner: principal;
+    name: text;
+    key: text;
+    department: opt text;
+    approved: bool;
+    created: int;
+    lastUsed: opt int;
+};
+
+type DeviceResult = record {
+    hash: text;
+    key: text;
+};
+
+service : {
+    "registerDevice": (text, opt text) -> (opt DeviceResult);
+    "approveDevice": (text) -> (bool);
+    "getDevicesByOwner": (principal) -> (vec Device) query;
+    "getPendingDevices": () -> (vec Device) query;
+}
