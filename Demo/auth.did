@@ -1,0 +1,38 @@
+// auth.did
+type Role = variant {
+    SUPER_ADMIN;
+    SYSTEM_ADMIN;
+    USER_ADMIN;
+    DEVICE_MANAGER;
+    ANALYST;
+    OPERATOR;
+    USER;
+};
+
+type UserStatus = variant {
+    PENDING;
+    APPROVED;
+    REJECTED;
+    SUSPENDED;
+};
+
+type User = record {
+    principal: principal;
+    name: text;
+    email: text;
+    role: Role;
+    status: UserStatus;
+    department: opt text;
+    created: int;
+    lastModified: int;
+};
+
+service : {
+    "isAdmin": () -> (bool) query;
+    "getUserRole": () -> (opt Role) query;
+    "registerUser": (text, text, opt text) -> (bool);
+    "approveUser": (principal) -> (bool);
+    "updateUserRole": (principal, Role) -> (bool);
+    "getAllUsers": () -> (vec User) query;
+    "getPendingUsers": () -> (vec User) query;
+}
