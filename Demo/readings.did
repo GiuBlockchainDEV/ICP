@@ -1,0 +1,24 @@
+// readings.did
+type ReadingData = record {
+    type: text;
+    value: float64;
+    unit: text;
+};
+
+type Reading = record {
+    id: text;
+    deviceHash: text;
+    timestamp: int;
+    data: vec ReadingData;
+};
+
+type Result = variant {
+    ok: text;
+    err: text;
+};
+
+service : {
+    "addReading": (text, text, text) -> (Result);
+    "getDeviceReadings": (text) -> (vec Reading) query;
+    "getReadingsByTimeRange": (text, int, int) -> (vec Reading) query;
+}
