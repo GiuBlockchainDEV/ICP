@@ -1,23 +1,24 @@
-import requests
 import json
 import time
 import random
 from datetime import datetime, timedelta
 import math
+from ic.client import Client
+from ic.identity import Identity
+from ic.agent import Agent
+from ic.candid import Types
 
 class HydroponicSystem:
     def __init__(self):
-        # Stato iniziale del sistema
         self.current_state = {
-            'ec': 1.5,          # mS/cm
-            'ph': 6.0,          # pH
-            'water_temp': 22.0,  # °C
-            'air_temp': 25.0,    # °C
-            'humidity': 60.0,    # %
-            'light': 500.0      # PPFD
+            'ec': 1.5,          
+            'ph': 6.0,          
+            'water_temp': 22.0,  
+            'air_temp': 25.0,    
+            'humidity': 60.0,    
+            'light': 500.0      
         }
         
-        # Parametri di variazione
         self.variation_params = {
             'ec': {'drift': 0.1, 'noise': 0.05},
             'ph': {'drift': 0.05, 'noise': 0.02},
@@ -27,7 +28,6 @@ class HydroponicSystem:
             'light': {'drift': 50.0, 'noise': 20.0}
         }
         
-        # Limiti per ogni parametro
         self.limits = {
             'ec': {'min': 0.8, 'max': 3.0},
             'ph': {'min': 5.5, 'max': 6.5},
@@ -38,38 +38,28 @@ class HydroponicSystem:
         }
 
     def _apply_daily_cycle(self, hour):
-        """Applica variazioni basate sul ciclo giornaliero"""
-        # Ciclo della luce (sinusoidale)
-        day_progress = (hour - 6) % 24  # Inizia alle 6:00
+        day_progress = (hour - 6) % 24
         if 6 <= hour < 18:
             light_factor = math.sin(math.pi * day_progress / 12)
             self.current_state['light'] = 500 + 400 * light_factor
         else:
-            self.current_state['light'] = random.uniform(0, 10)  # Luce notturna minima
+            self.current_state['light'] = random.uniform(0, 10)
 
-        # La temperatura dell'aria segue la luce con un ritardo
         temp_factor = math.sin(math.pi * ((day_progress - 2) % 24) / 12)
         self.current_state['air_temp'] = 25 + 3 * temp_factor
 
-        # La temperatura dell'acqua segue la temperatura dell'aria più lentamente
         water_temp_factor = math.sin(math.pi * ((day_progress - 4) % 24) / 12)
         self.current_state['water_temp'] = 22 + 2 * water_temp_factor
 
-        # L'umidità è inversamente proporzionale alla temperatura
         humidity_factor = -math.sin(math.pi * day_progress / 12)
         self.current_state['humidity'] = 60 + 5 * humidity_factor
 
     def _apply_random_drift(self):
-        """Applica una deriva casuale a tutti i parametri"""
         for param in self.current_state:
             drift = self.variation_params[param]['drift']
             noise = self.variation_params[param]['noise']
-            
-            # Applica deriva e rumore
             change = random.uniform(-drift, drift) + random.gauss(0, noise)
             self.current_state[param] += change
-            
-            # Mantieni nei limiti
             self.current_state[param] = max(
                 self.limits[param]['min'],
                 min(self.limits[param]['max'],
@@ -77,25 +67,18 @@ class HydroponicSystem:
             )
 
     def _apply_correlations(self):
-        """Applica correlazioni tra i diversi parametri"""
-        # EC influenza leggermente il pH
         ph_change = (self.current_state['ec'] - 1.5) * -0.1
         self.current_state['ph'] = max(5.5, min(6.5, self.current_state['ph'] + ph_change))
         
-        # Temperatura dell'aria influenza l'umidità
         humidity_change = (25 - self.current_state['air_temp']) * 0.5
         self.current_state['humidity'] = max(50, min(70, self.current_state['humidity'] + humidity_change))
 
     def generate_reading(self):
-        """Genera una nuova lettura nel formato richiesto dal contratto Motoko"""
         current_hour = datetime.now().hour
-        
-        # Applica le variazioni in sequenza
         self._apply_daily_cycle(current_hour)
         self._apply_random_drift()
         self._apply_correlations()
         
-        # Formatta i dati nel formato richiesto dal contratto
         readings = [
             {
                 "readingType": "ec",
@@ -131,77 +114,121 @@ class HydroponicSystem:
         
         return readings
 
-def send_reading(device_hash, device_key, readings, canister_id):
-    """Invia i dati al canister ICP"""
-    url = f"https://{canister_id}.raw.ic0.app/addReading"
-    
-    # Converti le letture nel formato richiesto dal contratto
-    readings_text = ",".join([
-        f"type:{r['readingType']},value:{r['readingValue']},unit:{r['readingUnit']}"
-        for r in readings
-    ])
-    
-    data = {
-        "deviceHash": device_hash,
-        "deviceKey": device_key,
-        "readingText": readings_text
-    }
-    
-    try:
-        response = requests.post(
-            url,
-            headers={'Content-Type': 'application/json'},
-            data=json.dumps(data)
-        )
-        return response.json()
-    except Exception as e:
-        print(f"Error sending data: {e}")
-        return None
+class ICPClient:
+    def __init__(self, canister_id):
+        # Inizializza il client ICP
+        print(f"Initializing ICP client for canister: {canister_id}")
+        self.client = Client(url="https://ic0.app")
+        self.identity = Identity()
+        self.agent = Agent(self.identity, self.client)
+        self.canister_id = canister_id
+
+    def send_reading(self, device_hash, device_key, readings):
+        """Invia i dati usando ic-py"""
+        # Converti le letture in una stringa
+        readings_text = ""
+        first = True
+        for reading in readings:
+            if not first:
+                readings_text += ","
+            readings_text += f"type:{reading['readingType']},value:{reading['readingValue']},unit:{reading['readingUnit']}"
+            first = False
+
+        try:
+            from ic.candid import encode
+            from ic.identity import Principal
+            from ic.candid import Types
+
+            # Prepara i parametri nel formato corretto
+            params = [
+                {"type": Types.Text, "value": device_hash},
+                {"type": Types.Text, "value": device_key},
+                {"type": Types.Text, "value": readings_text}
+            ]
+            
+            # Codifica gli argomenti
+            args = encode(params)
+            
+            print(f"\nDebug - Sending data to canister {self.canister_id}")
+            print(f"Debug - Method: addReading")
+            print(f"Debug - Device Hash: {device_hash}")
+            print(f"Debug - Key: {device_key}")
+            print(f"Debug - Data: {readings_text}")
+            
+            # Mantieni il canister ID come stringa
+            principal = Principal.from_str(self.canister_id)
+            canister_id_str = str(principal)  # Converti il Principal in stringa
+            
+            # Esegui la chiamata al canister
+            response = self.agent.update_raw(
+                canister_id_str,  # Usa la stringa invece del Principal
+                "addReading",
+                args,
+                timeout=30
+            )
+            
+            print(f"Debug - Response: {response}")
+            return {"success": True, "data": response}
+            
+        except Exception as e:
+            print(f"Error sending data: {e}")
+            print(f"Full error details: {str(e)}")
+            import traceback
+            print(f"Traceback: {traceback.format_exc()}")
+            return {"success": False, "error": str(e)}
 
 def simulate_readings(device_hash, device_key, canister_id, duration_hours=1, interval_minutes=5):
     """Simula letture per una durata specificata"""
     system = HydroponicSystem()
+    icp_client = ICPClient(canister_id)
+    
     start_time = datetime.now()
     end_time = start_time + timedelta(hours=duration_hours)
     
     print(f"Starting simulation at {start_time}")
     print(f"Will run until {end_time}")
     print(f"Sending data every {interval_minutes} minutes")
-    
+
     while datetime.now() < end_time:
-        # Genera dati
-        readings = system.generate_reading()
-        
-        # Stampa dati generati
-        print(f"\nTime: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-        for reading in readings:
-            print(f"{reading['readingType']}: {reading['readingValue']} {reading['readingUnit']}")
-        
-        # Invia dati
-        result = send_reading(device_hash, device_key, readings, canister_id)
-        if result:
-            print(f"Response from canister: {result}")
-        
-        # Attendi per il prossimo ciclo
-        time.sleep(interval_minutes * 60)
+        try:
+            # Genera dati
+            readings = system.generate_reading()
+            
+            print(f"\nTime: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+            for reading in readings:
+                print(f"{reading['readingType']}: {reading['readingValue']} {reading['readingUnit']}")
+            
+            # Invia i dati
+            result = icp_client.send_reading(device_hash, device_key, readings)
+            if result['success']:
+                print("Data sent successfully!")
+            else:
+                print(f"Failed to send data: {result.get('error', 'Unknown error')}")
+            
+            # Attendi per il prossimo ciclo
+            time.sleep(interval_minutes * 60)
+            
+        except KeyboardInterrupt:
+            print("\nSimulation stopped by user")
+            break
+        except Exception as e:
+            print(f"Error in simulation: {e}")
+            print("Waiting before next attempt...")
+            time.sleep(60)
 
 if __name__ == "__main__":
     # Configurazione
-    DEVICE_HASH = "your_device_hash"
-    DEVICE_KEY = "your_device_key"
-    CANISTER_ID = "your_canister_id"
-    
-    # Durata simulazione e intervallo
-    DURATION_HOURS = 1
-    INTERVAL_MINUTES = 5
+    DEVICE_HASH = "mzg4d-slh3z-6rikt-huoiv-r34hy-rpmyb-3c5ce-ybijs-ywz37-jx6tw-saeGrowTow1737022276143932304"
+    DEVICE_KEY = "mzg4d-slh3z-6rikt-huoiv-r34hy-rpmyb-3c5ce-ybijs-ywz37-jx6tw-saeGrowTow17370222761439323041737022276143932304"
+    CANISTER_ID = "ysmdh-qyaaa-aaaab-qacga-cai"
     
     try:
         simulate_readings(
             DEVICE_HASH, 
             DEVICE_KEY, 
             CANISTER_ID,
-            duration_hours=DURATION_HOURS,
-            interval_minutes=INTERVAL_MINUTES
+            duration_hours=1,
+            interval_minutes=5
         )
     except KeyboardInterrupt:
         print("\nSimulation stopped by user")
