@@ -19,15 +19,32 @@ actor SmartContract {
     private var authorizedUsers = HashMap.HashMap<Principal, Bool>(0, Principal.equal, Principal.hash);
     private var readings = HashMap.HashMap<Text, [Reading]>(0, Text.equal, Text.hash);
 
-    // Admin assignment function - can only be called once
+    // Admin assignment function - can only be called once if no owner exists
     public shared(msg) func assignAdmin() : async Text {
         switch(owner) {
             case null {
                 owner := ?msg.caller;
                 return "Admin rights assigned successfully";
             };
-            case (?_existingOwner) {
+            case (?_) {
                 throw Error.reject("Admin already assigned");
+            };
+        };
+    };
+
+    // Transfer ownership to a new admin
+    public shared(msg) func transferOwnership(newOwner: Principal) : async Text {
+        switch(owner) {
+            case null {
+                throw Error.reject("No admin assigned yet");
+            };
+            case (?currentOwner) {
+                if (Principal.equal(msg.caller, currentOwner)) {
+                    owner := ?newOwner;
+                    return "Ownership transferred successfully to new admin";
+                } else {
+                    throw Error.reject("Only current admin can transfer ownership");
+                };
             };
         };
     };
@@ -36,7 +53,7 @@ actor SmartContract {
     private func isAdmin(caller: Principal) : Bool {
         switch(owner) {
             case null { return false; };
-            case (?existingOwner) { return Principal.equal(caller, existingOwner); };
+            case (?currentOwner) { return Principal.equal(caller, currentOwner); };
         };
     };
 
@@ -120,9 +137,59 @@ actor SmartContract {
         };
     };
 
+    // Get readings for multiple entities
+    public query func getMultipleEntityReadings(entity_ids: [Text]) : async [(Text, [(Int, Float)])] {
+        Array.map<Text, (Text, [(Int, Float)])>(
+            entity_ids,
+            func (entity_id: Text) : (Text, [(Int, Float)]) {
+                let entityReadings = switch(readings.get(entity_id)) {
+                    case null { []; };
+                    case (?readings) {
+                        Array.map<Reading, (Int, Float)>(
+                            readings,
+                            func (reading: Reading) : (Int, Float) {
+                                (reading.created_at, reading.value)
+                            }
+                        );
+                    };
+                };
+                (entity_id, entityReadings)
+            }
+        );
+    };
+
     // Get current admin
     public query func getAdmin() : async ?Principal {
         return owner;
+    };
+
+    // Get readings for multiple entities with time range
+    public query func getMultipleEntityReadingsInTimeRange(entity_ids: [Text], start_time: Int, end_time: Int) : async [(Text, [(Int, Float)])] {
+        Array.map<Text, (Text, [(Int, Float)])>(
+            entity_ids,
+            func (entity_id: Text) : (Text, [(Int, Float)]) {
+                let entityReadings = switch(readings.get(entity_id)) {
+                    case null { []; };
+                    case (?readings) {
+                        // First filter by time range
+                        let filteredReadings = Array.filter<Reading>(
+                            readings,
+                            func (reading: Reading) : Bool {
+                                reading.created_at >= start_time and reading.created_at <= end_time
+                            }
+                        );
+                        // Then map to (timestamp, value) tuples
+                        Array.map<Reading, (Int, Float)>(
+                            filteredReadings,
+                            func (reading: Reading) : (Int, Float) {
+                                (reading.created_at, reading.value)
+                            }
+                        );
+                    };
+                };
+                (entity_id, entityReadings)
+            }
+        );
     };
 
     // Check if user is authorized
